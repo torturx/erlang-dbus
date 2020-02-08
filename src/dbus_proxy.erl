@@ -114,7 +114,7 @@ call(Proxy, #dbus_message{}=Msg) ->
 -spec call(Proxy :: dbus_proxy(), Msg :: dbus_message(),
 	   Timeout :: integer() | infinity) -> {ok, term()} | {error, term()}.
 call(Proxy, #dbus_message{}=Msg, Timeout) ->
-    gen_server:call(Proxy, {call, Msg}, Timeout).
+    gen_server:call(Proxy, {call, Msg, Timeout}, Timeout).
 
 
 %% @equiv call(Proxy, Ifacename, MethodName, Args, 5000)
@@ -131,7 +131,7 @@ call(Proxy, IfaceName, MethodName, Args) ->
 	   Timeout :: integer() | infinity) ->
           ok | {ok, term()} | {error, term()}.
 call(Proxy, IfaceName, MethodName, Args, Timeout) when is_pid(Proxy) ->
-    gen_server:call(Proxy, {method, IfaceName, MethodName, Args}, Timeout).
+    gen_server:call(Proxy, {method, IfaceName, MethodName, Args, Timeout}, Timeout).
 
 
 %% @doc Async send a message
@@ -217,11 +217,11 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 %%-logging(debug).
-handle_call({method, IfaceName, MethodName, Args}, _From, #state{node=Node}=State) ->
+handle_call({method, IfaceName, MethodName, Args, Timeout}, _From, #state{node=Node}=State) ->
     ?debug("Calling ~p:~p.~p(~p)~n", [State#state.path, IfaceName, MethodName, Args]),
     case dbus_introspect:find_method(Node, IfaceName, MethodName) of
         {ok, Method} ->
-            do_method(IfaceName, Method, Args, State);
+            do_method(IfaceName, Method, Args, State, Timeout);
         {error, _}=Err ->
             {reply, Err, State}
     end;
@@ -278,8 +278,8 @@ handle_call(children, _From, #state{node=#dbus_node{name=Name, elements=Children
     Paths = lists:map(fun (#dbus_node{name=ChildPath}) -> filename:join(Prefix, ChildPath) end, Children),
     {reply, Paths, State};
 
-handle_call({call, Msg}, _From, #state{conn=Conn}=State) ->
-    Ret = dbus_connection:call(Conn, Msg),
+handle_call({call, Msg, Timeout}, _From, #state{conn=Conn}=State) ->
+    Ret = dbus_connection:call(Conn, Msg, Timeout),
     {reply, Ret, State};
 
 handle_call({cast, Msg}, _From, #state{conn=Conn}=State) ->
@@ -342,10 +342,13 @@ reply(From, Reply, Options) ->
     ok.
 
 do_method(IfaceName, Method, Args, #state{service=Service, conn=Conn, path=Path}=State) ->
+    do_method(IfaceName, Method, Args, State, 5000).
+
+do_method(IfaceName, Method, Args, #state{service=Service, conn=Conn, path=Path}=State, Timeout) ->
     Msg = dbus_message:call(Service, Path, IfaceName, Method),
     case dbus_message:set_body(Method, Args, Msg) of
         #dbus_message{}=M2 ->
-            case dbus_connection:call(Conn, M2) of
+            case dbus_connection:call(Conn, M2, Timeout) of
                 {ok, #dbus_message{body=undefined}} ->
                     {reply, ok, State};
                 {ok, #dbus_message{body=Res}} ->

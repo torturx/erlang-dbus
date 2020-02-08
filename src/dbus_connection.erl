@@ -14,11 +14,12 @@
 -include("dbus_client.hrl").
 
 -callback close(dbus_connection()) -> ok.
--callback call(dbus_connection(), dbus_message()) -> {ok, term()} | {error, term()}.
+-callback call(dbus_connection(), dbus_message(), integer()) -> {ok, term()} | {error, term()}.
 -callback cast(dbus_connection(), dbus_message()) -> ok | {error, term()}.
 
 -export([close/1,
-	 call/2,
+     call/2,
+	 call/3,
 	 cast/2]).
 
 %% @doc Close the connection
@@ -32,7 +33,11 @@ close({Mod, Conn}) ->
 %% @end
 -spec call(dbus_connection(), dbus_message()) -> {ok, term()} | {error, term()}.
 call({Mod, Conn}, #dbus_message{}=Msg) ->
-    Mod:call(Conn, Msg).
+    Mod:call(Conn, Msg, 5000).
+
+-spec call(dbus_connection(), dbus_message(), integer()) -> {ok, term()} | {error, term()}.
+call({Mod, Conn}, #dbus_message{}=Msg, Timeout) ->
+    Mod:call(Conn, Msg, Timeout).
 
 %% @doc Asychronously send a message
 %% @end

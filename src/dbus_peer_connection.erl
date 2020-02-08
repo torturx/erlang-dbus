@@ -24,7 +24,7 @@
 
 %% gen_dbus_connection callback
 -export([close/1,
-         call/2,
+         call/3,
          cast/2]).
 
 %% gen_fsm callbacks
@@ -89,8 +89,8 @@ close(Conn) when is_pid(Conn) ->
 
 %% @doc Synchronously send a message
 %% @end
--spec call(pid(), dbus_message()) -> {ok, term()} | {error, term()}.
-call(Conn, #dbus_message{}=Msg) when is_pid(Conn) ->
+-spec call(pid(), dbus_message(), integer()) -> {ok, term()} | {error, term()}.
+call(Conn, #dbus_message{}=Msg, Timeout) when is_pid(Conn) ->
     case gen_fsm:sync_send_event(Conn, {call, Msg}, infinity) of
         {ok, Tag} ->
             receive
@@ -98,7 +98,7 @@ call(Conn, #dbus_message{}=Msg) when is_pid(Conn) ->
                     {ok, Res};
                 {error, Tag, Res} ->
                     {error, Res}
-            after ?TIMEOUT ->
+            after Timeout ->
                     ?error("DBUS timeout~n", []),
                     throw({error, timeout})
             end;

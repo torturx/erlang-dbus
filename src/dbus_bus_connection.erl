@@ -25,7 +25,7 @@
 
 %% dbus_connection callbacks
 -export([close/1,
-	 call/2,
+	 call/3,
 	 cast/2]).
 
 -define(DEFAULT_BUS_SYSTEM, #bus_id{scheme=unix,options=[{path, "/var/run/dbus/system_bus_socket"}]}).
@@ -97,9 +97,9 @@ close(Bus) ->                dbus_proxy:stop(Bus).
 
 %% @doc Send a message to the bus connection, synchronously.
 %% @end
--spec call({?MODULE, dbus_connection()} | dbus_connection(), dbus_message()) -> {ok, term()} | {error, term()}.
-call({?MODULE, Bus}, Msg) -> dbus_proxy:call(Bus, Msg);
-call(Bus, Msg) ->            dbus_proxy:call(Bus, Msg).
+-spec call({?MODULE, dbus_connection()} | dbus_connection(), dbus_message(), integer()) -> {ok, term()} | {error, term()}.
+call({?MODULE, Bus}, Msg, Timeout) -> dbus_proxy:call(Bus, Msg, Timeout);
+call(Bus, Msg, Timeout) ->            dbus_proxy:call(Bus, Msg, Timeout).
 
 
 %% @doc Send a message to the bus connection, asynchronously.
